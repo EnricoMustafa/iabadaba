@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Bash(npx create-vite@latest . --template react)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(npx playwright *)",
+      "Bash(curl -s http://localhost:5177)",
+      "Bash(node -e \"require\\('playwright'\\)\")",
+      "Bash(find / -path \"*/playwright/index.js\")",
+      "Read(//usr/bin/**)",
+      "Read(//snap/bin/**)",
+      "Bash(PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npx playwright install firefox)",
+      "Bash(node -e \"require\\('/home/enrico/.nvm/versions/node/v24.15.0/lib/node_modules/playwright'\\)\")",
+      "Bash(firefox --version)",
+      "Bash(pip3 show *)",
+      "Bash(PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers npx playwright install chromium)",
+      "Bash(node *)",
+      "Bash(chromium-cli *)",
+      "Bash(apt-get install *)",
+      "Bash(sudo apt-get install -y chromium-browser)",
+      "Bash(PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1 npx playwright install chromium)",
+      "Bash(pip3 install *)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 *)"
+    ]
+  }
+}
