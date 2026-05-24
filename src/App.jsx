@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { sounds } from './sounds.js'
 
-// ─── color helpers ──────────────────────────────────────────────────────────
+// ─── color helpers ───────────────────────────────────────────────────────────
 
 function hslToRgb(h, s, l) {
-  s /= 100
-  l /= 100
+  s /= 100; l /= 100
   const k = n => (n + h / 30) % 12
   const a = s * Math.min(l, 1 - l)
   const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))
@@ -27,162 +26,69 @@ function randColor() {
   }
 }
 
-function hsl({ h, s, l }) {
-  return `hsl(${h},${s}%,${l}%)`
+function hsl({ h, s, l }) { return `hsl(${h},${s}%,${l}%)` }
+
+function generateOptions(target) {
+  const variants = [
+    { h: (target.h + 20) % 360,       s: target.s,                                   l: target.l },
+    { h: (target.h - 20 + 360) % 360, s: target.s,                                   l: target.l },
+    { h: (target.h + 40) % 360,       s: target.s,                                   l: target.l },
+    { h: (target.h - 40 + 360) % 360, s: target.s,                                   l: target.l },
+    { h: target.h, s: Math.min(90, Math.max(10, target.s + 22)), l: Math.min(80, Math.max(20, target.l - 18)) },
+  ]
+  const all = [target, ...variants]
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[all[i], all[j]] = [all[j], all[i]]
+  }
+  return all
 }
 
-const ROUNDS = 5
-const COUNTDOWN = 5
+const ROUNDS          = 5
+const COUNTDOWN       = 5
+const CHOICE_COUNTDOWN = 5
 
-// ─── Slider ─────────────────────────────────────────────────────────────────
+// ─── ProgressBar ─────────────────────────────────────────────────────────────
 
-function Slider({ label, value, min, max, onChange, gradient }) {
-  const pct = ((value - min) / (max - min)) * 100
-  const thumbOffset = 12 - pct * 0.24
-  const lastSound = useRef(0)
-
-  function handleChange(e) {
-    const v = Number(e.target.value)
-    onChange(v)
-    const now = Date.now()
-    if (now - lastSound.current > 80) {
-      sounds.slide()
-      lastSound.current = now
-    }
-  }
-
+function ProgressBar({ value, max, urgent }) {
   return (
-    <div>
-      <div className="flex justify-between text-sm mb-2.5">
-        <span className="text-white/60 font-medium tracking-wide">{label}</span>
-        <span className="text-white/40 tabular-nums w-8 text-right font-mono text-xs">{value}</span>
-      </div>
-      <div className="relative h-7 flex items-center select-none">
-        <div
-          className="absolute inset-x-0 h-[3px] rounded-full"
-          style={{ background: gradient }}
-        />
-        <div
-          className="absolute w-5 h-5 rounded-full bg-white shadow-lg pointer-events-none ring-1 ring-black/20"
-          style={{
-            left: `calc(${pct}% + ${thumbOffset}px)`,
-            transform: 'translateX(-50%)',
-          }}
-        />
-        <input
-          type="range"
-          min={min}
-          max={max}
-          value={value}
-          onChange={handleChange}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-        />
-      </div>
+    <div className="w-full h-[2px] rounded-full overflow-hidden" style={{ background: '#e8e8e8' }}>
+      <div
+        className="h-full rounded-full transition-[width] ease-linear duration-[1000ms]"
+        style={{ width: `${(value / max) * 100}%`, background: urgent ? '#aaa' : '#0a0a0a' }}
+      />
     </div>
   )
 }
 
-// ─── ScoreBadge ─────────────────────────────────────────────────────────────
+// ─── ScoreBadge ──────────────────────────────────────────────────────────────
 
 function ScoreBadge({ score }) {
   useEffect(() => { sounds.score(score) }, [])
 
   const msg =
-    score >= 90 ? 'Incrível!' :
-    score >= 75 ? 'Muito bom!' :
-    score >= 55 ? 'Bom trabalho!' :
-                  'Continue praticando!'
+    score >= 95 ? 'Perfeito.'          :
+    score >= 75 ? 'Muito bom.'         :
+    score >= 55 ? 'Bom trabalho.'      :
+                  'Continue praticando.'
 
   return (
-    <div className="text-center">
-      <div className="text-7xl font-black tabular-nums text-white tracking-tighter">{score}</div>
-      <div className="text-white/30 text-xs uppercase tracking-[0.2em] mt-1 mb-1 font-medium">pontos</div>
-      <div className="text-white/70 text-base font-medium">{msg}</div>
-    </div>
-  )
-}
-
-// ─── RoundDots ───────────────────────────────────────────────────────────────
-
-function RoundDots({ current }) {
-  return (
-    <div className="flex justify-center gap-1.5">
-      {Array.from({ length: ROUNDS }, (_, i) => (
-        <div
-          key={i}
-          className={`h-[3px] rounded-full transition-all duration-300 ${
-            i < current - 1
-              ? 'bg-white w-7'
-              : i === current - 1
-              ? 'bg-white w-7'
-              : 'bg-white/20 w-5'
-          }`}
-        />
-      ))}
-    </div>
-  )
-}
-
-// ─── Results screen ──────────────────────────────────────────────────────────
-
-function ResultsScreen({ history, onRestart }) {
-  useEffect(() => { sounds.results() }, [])
-  const total = history.reduce((a, r) => a + r.score, 0)
-  const avg = Math.round(total / history.length)
-
-  return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 md:p-8">
-      <GitHubBadge />
-      <div className="mb-10 text-center">
-        <h1 className="text-5xl font-black tracking-tighter mb-1">iabadaba</h1>
-        <p className="text-white/30 text-sm tracking-[0.2em] uppercase font-medium">resultados finais</p>
-      </div>
-
-      <div className="w-full max-w-md space-y-2 mb-8">
-        {history.map((r, i) => (
-          <div key={i} className="border border-white/8 rounded-2xl p-4 flex items-center gap-4 bg-white/[0.02]">
-            <span className="text-white/30 text-xs uppercase tracking-wider w-16 shrink-0 font-medium">
-              #{i + 1}
-            </span>
-            <div className="flex gap-2 flex-1 min-w-0">
-              <div className="flex-1">
-                <p className="text-[10px] text-white/25 mb-1.5 text-center uppercase tracking-widest">Alvo</p>
-                <div className="h-12 rounded-xl" style={{ background: hsl(r.target) }} />
-              </div>
-              <div className="flex-1">
-                <p className="text-[10px] text-white/25 mb-1.5 text-center uppercase tracking-widest">Palpite</p>
-                <div className="h-12 rounded-xl" style={{ background: hsl(r.guess) }} />
-              </div>
-            </div>
-            <div className="text-right shrink-0 w-10">
-              <span className="text-xl font-black tabular-nums">{r.score}</span>
-              <p className="text-[10px] text-white/25 uppercase tracking-widest">pts</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="border border-white/10 rounded-2xl p-6 w-full max-w-md mb-8 text-center bg-white/[0.02]">
-        <p className="text-white/30 text-xs uppercase tracking-[0.2em] mb-2 font-medium">pontuação total</p>
-        <p className="text-6xl font-black tabular-nums tracking-tighter mb-2">{total}</p>
-        <p className="text-white/30 text-sm">
-          média{' '}
-          <span className="text-white font-semibold">{avg}</span>
-          /100 por rodada
-        </p>
-      </div>
-
-      <button
-        onClick={onRestart}
-        className="px-10 py-4 bg-white text-black font-bold rounded-2xl hover:bg-white/90 active:scale-95 transition-all text-sm tracking-wide uppercase"
+    <div className="w-full border-t pt-4 sm:pt-6 text-center" style={{ borderColor: '#ebebeb' }}>
+      <span
+        className="font-mono font-black tabular-nums leading-none"
+        style={{ color: '#0a0a0a', fontSize: 'clamp(3rem, 12vw, 5rem)' }}
       >
-        Jogar novamente
-      </button>
+        {score}
+      </span>
+      <p className="text-[10px] uppercase tracking-[0.25em] font-medium mt-1" style={{ color: '#777' }}>
+        pontos
+      </p>
+      <p className="mt-2 text-sm sm:text-base" style={{ color: '#555' }}>{msg}</p>
     </div>
   )
 }
 
-// ─── GitHub badge ────────────────────────────────────────────────────────────
+// ─── GitHub badge ─────────────────────────────────────────────────────────────
 
 function GitHubBadge() {
   return (
@@ -190,38 +96,123 @@ function GitHubBadge() {
       href="https://github.com/EnricoMustafa"
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed top-4 right-4 flex items-center gap-2 text-white/40 hover:text-white transition-colors duration-200 z-50 group"
+      aria-label="GitHub"
+      className="fixed top-4 right-4 sm:top-5 sm:right-5 z-50 transition-opacity duration-200 hover:opacity-40"
+      style={{ color: '#ccc' }}
     >
-      <span className="text-xs font-medium tracking-wide group-hover:text-white/70 transition-colors">
-        by: EnricoMustafa
-      </span>
-      <svg
-        viewBox="0 0 24 24"
-        className="w-5 h-5 fill-current"
-        aria-hidden="true"
-      >
+      <svg viewBox="0 0 24 24" className="w-4 h-4 sm:w-[18px] sm:h-[18px] fill-current">
         <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
       </svg>
     </a>
   )
 }
 
-// ─── Main App ────────────────────────────────────────────────────────────────
+// ─── Results screen ───────────────────────────────────────────────────────────
+
+function ResultsScreen({ history, onRestart }) {
+  useEffect(() => { sounds.results() }, [])
+  const total = history.reduce((a, r) => a + r.score, 0)
+  const avg   = Math.round(total / history.length)
+
+  return (
+    <div
+      className="min-h-dvh flex flex-col items-center px-5 sm:px-0 py-8 sm:py-12 overflow-y-auto"
+      style={{ background: '#fafafa' }}
+    >
+      <GitHubBadge />
+      <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg flex flex-col flex-1">
+
+        {/* wordmark */}
+        <div className="mb-8 sm:mb-10">
+          <h1 className="text-lg sm:text-xl font-black tracking-tight" style={{ color: '#0a0a0a' }}>
+            iabadaba
+          </h1>
+          <p className="text-[10px] uppercase tracking-[0.25em] font-medium mt-1" style={{ color: '#666' }}>
+            resultados finais
+          </p>
+        </div>
+
+        {/* round rows */}
+        <div className="mb-8 sm:mb-10">
+          {history.map((r, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-4 py-3.5 sm:py-4"
+              style={{ borderBottom: '1px solid #f0f0f0' }}
+            >
+              <span className="font-mono text-[10px] tabular-nums w-5 shrink-0" style={{ color: '#888' }}>
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <div className="flex gap-1.5 flex-1 min-w-0">
+                <div
+                  className="flex-1 h-9 sm:h-11 rounded-[4px]"
+                  style={{ background: hsl(r.target), border: '1px solid rgba(0,0,0,0.05)' }}
+                />
+                <div
+                  className="flex-1 h-9 sm:h-11 rounded-[4px]"
+                  style={{ background: hsl(r.guess), border: '1px solid rgba(0,0,0,0.05)' }}
+                />
+              </div>
+              <span
+                className="font-mono text-sm sm:text-base font-black tabular-nums text-right w-8 shrink-0"
+                style={{ color: '#0a0a0a' }}
+              >
+                {r.score}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* totals */}
+        <div className="pt-6 sm:pt-8 mb-10 sm:mb-12" style={{ borderTop: '1px solid #ebebeb' }}>
+          <p className="text-[10px] uppercase tracking-[0.25em] font-medium mb-3" style={{ color: '#666' }}>
+            Pontuação total
+          </p>
+          <p
+            className="font-mono font-black tabular-nums leading-none"
+            style={{ color: '#0a0a0a', fontSize: 'clamp(3.5rem, 14vw, 5.5rem)' }}
+          >
+            {total}
+          </p>
+          <p className="text-xs sm:text-sm mt-3" style={{ color: '#888' }}>
+            média{' '}
+            <span className="font-semibold" style={{ color: '#333' }}>{avg}</span>
+            /100 por rodada
+          </p>
+        </div>
+
+        <button
+          onClick={onRestart}
+          className="w-full py-3.5 sm:py-4 text-sm sm:text-base font-semibold rounded-lg active:scale-[0.98] transition-all"
+          style={{ background: '#0a0a0a', color: '#fff' }}
+        >
+          Jogar novamente
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_GUESS = { h: 180, s: 50, l: 50 }
 
 export default function App() {
-  const [phase, setPhase] = useState('start')
-  const [round, setRound] = useState(1)
-  const [target, setTarget] = useState(randColor)
-  const [guess, setGuess] = useState(DEFAULT_GUESS)
-  const [countdown, setCountdown] = useState(COUNTDOWN)
-  const [history, setHistory] = useState([])
+  const [phase, setPhase]                     = useState('start')
+  const [round, setRound]                     = useState(1)
+  const [target, setTarget]                   = useState(randColor)
+  const [guess, setGuess]                     = useState(DEFAULT_GUESS)
+  const [countdown, setCountdown]             = useState(COUNTDOWN)
+  const [choiceCountdown, setChoiceCountdown] = useState(CHOICE_COUNTDOWN)
+  const [options, setOptions]                 = useState([])
+  const [history, setHistory]                 = useState([])
+  const [deco]                                = useState(() => Array.from({ length: 6 }, randColor))
 
   useEffect(() => {
     if (phase !== 'showing') return
     if (countdown === 0) {
       sounds.go()
+      setChoiceCountdown(CHOICE_COUNTDOWN)
       setPhase('guessing')
       return
     }
@@ -230,10 +221,29 @@ export default function App() {
     return () => clearTimeout(id)
   }, [phase, countdown])
 
-  function handleConfirm() {
+  useEffect(() => {
+    if (phase !== 'guessing') return
+    if (choiceCountdown === 0) {
+      const worst = options.reduce((acc, opt) =>
+        calcScore(target, opt) < calcScore(target, acc) ? opt : acc
+      , options[0])
+      sounds.confirm()
+      const score = calcScore(target, worst)
+      setGuess({ ...worst })
+      setHistory(h => [...h, { target: { ...target }, guess: { ...worst }, score }])
+      setPhase('reveal')
+      return
+    }
+    sounds.tick(choiceCountdown)
+    const id = setTimeout(() => setChoiceCountdown(c => c - 1), 1000)
+    return () => clearTimeout(id)
+  }, [phase, choiceCountdown, options, target])
+
+  function handleOptionSelect(option) {
     sounds.confirm()
-    const score = calcScore(target, guess)
-    setHistory(h => [...h, { target: { ...target }, guess: { ...guess }, score }])
+    const score = calcScore(target, option)
+    setGuess({ ...option })
+    setHistory(h => [...h, { target: { ...target }, guess: { ...option }, score }])
     setPhase('reveal')
   }
 
@@ -241,24 +251,32 @@ export default function App() {
     if (round >= ROUNDS) {
       setPhase('results')
     } else {
+      const newTarget = randColor()
       setRound(r => r + 1)
-      setTarget(randColor())
+      setTarget(newTarget)
       setGuess(DEFAULT_GUESS)
       setCountdown(COUNTDOWN)
+      setChoiceCountdown(CHOICE_COUNTDOWN)
+      setOptions(generateOptions(newTarget))
       setPhase('showing')
     }
   }
 
   function handleStart() {
+    setOptions(generateOptions(target))
+    setChoiceCountdown(CHOICE_COUNTDOWN)
     setPhase('showing')
   }
 
   function handleRestart() {
+    const newTarget = randColor()
     setPhase('start')
     setRound(1)
-    setTarget(randColor())
+    setTarget(newTarget)
     setGuess(DEFAULT_GUESS)
     setCountdown(COUNTDOWN)
+    setChoiceCountdown(CHOICE_COUNTDOWN)
+    setOptions(generateOptions(newTarget))
     setHistory([])
   }
 
@@ -266,36 +284,87 @@ export default function App() {
     return <ResultsScreen history={history} onRestart={handleRestart} />
   }
 
+  // ── Start ─────────────────────────────────────────────────────────────────
   if (phase === 'start') {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
+      <div
+        className="h-dvh flex flex-col items-center justify-center px-5 sm:px-0"
+        style={{ background: '#fafafa' }}
+      >
         <GitHubBadge />
-        <div className="w-full max-w-sm flex flex-col items-center text-center">
-          <h1 className="text-6xl font-black tracking-tighter mb-3">iabadaba</h1>
-          <p className="text-white/30 text-xs uppercase tracking-[0.25em] font-medium mb-12">
-            jogo de memória de cores
+        <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg">
+
+          {/* título + swatches decorativos */}
+          <div className="mb-8 sm:mb-10">
+            <h1
+              className="font-black tracking-tighter leading-none mb-4 sm:mb-5"
+              style={{ color: '#0a0a0a', fontSize: 'clamp(2.75rem, 12vw, 6rem)' }}
+            >
+              iabadaba
+            </h1>
+            <div className="flex gap-1.5 sm:gap-2">
+              {deco.map((c, i) => (
+                <div
+                  key={i}
+                  className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 rounded-[3px]"
+                  style={{ background: hsl(c), border: '1px solid rgba(0,0,0,0.06)' }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* tagline */}
+          <p
+            className="text-[10px] sm:text-xs uppercase tracking-[0.25em] font-medium mb-8 sm:mb-10"
+            style={{ color: '#666' }}
+          >
+            Jogo de memória de cores
           </p>
 
-          <div className="w-full border border-white/8 rounded-2xl p-6 bg-white/[0.02] mb-10 space-y-4 text-left">
+          {/* instruções */}
+          <div className="mb-8 sm:mb-10">
             {[
-              ['1', 'Memorize a cor exibida na tela'],
-              ['2', 'Use os sliders para reproduzi-la de memória'],
-              ['3', 'Confirme e veja sua pontuação'],
-            ].map(([n, text]) => (
-              <div key={n} className="flex items-start gap-4">
-                <span className="text-white/20 font-black text-lg tabular-nums leading-none mt-0.5">{n}</span>
-                <span className="text-white/50 text-sm leading-relaxed">{text}</span>
+              ['01', 'Memorize a cor exibida na tela'],
+              ['02', 'Escolha entre 6 tons qual era a cor original'],
+              ['03', 'Você tem 5 segundos para decidir'],
+            ].map(([n, text], idx, arr) => (
+              <div
+                key={n}
+                className="flex gap-5 items-start py-3.5 sm:py-4"
+                style={idx < arr.length - 1 ? { borderBottom: '1px solid #f0f0f0' } : {}}
+              >
+                <span
+                  className="font-mono text-[10px] tabular-nums mt-0.5 shrink-0"
+                  style={{ color: '#aaa' }}
+                >
+                  {n}
+                </span>
+                <span className="text-sm sm:text-base leading-relaxed" style={{ color: '#333' }}>
+                  {text}
+                </span>
               </div>
             ))}
           </div>
 
-          <div className="text-white/20 text-xs uppercase tracking-[0.2em] mb-4 font-medium">
-            {ROUNDS} rodadas
+          {/* rodadas */}
+          <div className="flex items-center gap-3 mb-5 sm:mb-6">
+            <div className="flex gap-1">
+              {Array.from({ length: ROUNDS }, (_, i) => (
+                <div key={i} className="w-1 h-1 rounded-full" style={{ background: '#bbb' }} />
+              ))}
+            </div>
+            <span
+              className="text-[10px] uppercase tracking-[0.2em] font-medium"
+              style={{ color: '#888' }}
+            >
+              {ROUNDS} rodadas
+            </span>
           </div>
 
           <button
             onClick={handleStart}
-            className="w-full py-4 bg-white text-black font-bold rounded-2xl hover:bg-white/90 active:scale-95 transition-all text-sm tracking-wide uppercase"
+            className="w-full py-3.5 sm:py-4 text-sm sm:text-base font-semibold rounded-lg active:scale-[0.98] transition-all"
+            style={{ background: '#0a0a0a', color: '#fff' }}
           >
             Iniciar
           </button>
@@ -304,125 +373,134 @@ export default function App() {
     )
   }
 
+  // ── Game ──────────────────────────────────────────────────────────────────
   const lastScore = history[history.length - 1]?.score
-  const circumference = 2 * Math.PI * 40
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
+    <div
+      className="h-dvh flex flex-col items-center px-5 sm:px-0"
+      style={{ background: '#fafafa' }}
+    >
       <GitHubBadge />
-      <div className="w-full max-w-sm">
 
-        {/* ── header ─────────────────────────────── */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-black tracking-tighter mb-4">iabadaba</h1>
-          <RoundDots current={round} />
-          <p className="text-white/25 text-xs mt-3 uppercase tracking-[0.2em] font-medium">
-            rodada {round} / {ROUNDS}
-          </p>
+      {/* header fixo no topo */}
+      <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg shrink-0 pt-6 sm:pt-10 pb-4 sm:pb-6">
+        <div className="flex items-center justify-between mb-1.5">
+          <h1
+            className="font-black tracking-tight"
+            style={{ color: '#0a0a0a', fontSize: 'clamp(0.875rem, 2.5vw, 1.125rem)' }}
+          >
+            iabadaba
+          </h1>
+          <span className="font-mono text-[10px] sm:text-xs tabular-nums" style={{ color: '#888' }}>
+            {String(round).padStart(2, '0')} / {String(ROUNDS).padStart(2, '0')}
+          </span>
         </div>
+        <ProgressBar value={round} max={ROUNDS} />
+      </div>
 
-        {/* ── SHOWING ────────────────────────────── */}
+      {/* conteúdo — ocupa o espaço restante, centralizado verticalmente */}
+      <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg flex-1 flex flex-col justify-center pb-6 sm:pb-10">
+
+        {/* ── SHOWING ─────────────────────────────── */}
         {phase === 'showing' && (
-          <div className="flex flex-col items-center">
-            <p className="text-white/40 mb-6 text-sm tracking-wide uppercase font-medium">
-              Memorize esta cor
+          <div>
+            <p
+              className="text-[10px] sm:text-xs uppercase tracking-[0.25em] font-medium mb-4 sm:mb-5"
+              style={{ color: '#555' }}
+            >
+              Memorize
             </p>
 
             <div
-              className="w-52 h-52 rounded-3xl mb-10"
-              style={{ background: hsl(target) }}
+              className="w-full rounded-lg sm:rounded-xl mb-5 sm:mb-7"
+              style={{
+                background: hsl(target),
+                aspectRatio: '4/3',
+                border: '1px solid rgba(0,0,0,0.06)',
+              }}
             />
 
-            <div className="relative w-20 h-20">
-              <svg className="w-20 h-20" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="40" cy="40" r="34" fill="none" stroke="#ffffff14" strokeWidth="5" />
-                <circle
-                  cx="40" cy="40" r="34"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 34}
-                  strokeDashoffset={2 * Math.PI * 34 * (1 - countdown / COUNTDOWN)}
-                  style={{ transition: 'stroke-dashoffset 0.85s linear' }}
-                />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-3xl font-black tabular-nums">
+            <div className="flex items-center gap-4">
+              <ProgressBar value={countdown} max={COUNTDOWN} />
+              <span
+                className="font-mono text-[11px] sm:text-xs tabular-nums shrink-0 w-3 text-right"
+                style={{ color: '#888' }}
+              >
                 {countdown}
               </span>
             </div>
           </div>
         )}
 
-        {/* ── GUESSING ───────────────────────────── */}
+        {/* ── GUESSING ────────────────────────────── */}
         {phase === 'guessing' && (
           <div>
-            <p className="text-white/40 mb-6 text-center text-sm uppercase tracking-wide font-medium">
-              Reproduza a cor de memória
-            </p>
-
-            <div
-              className="w-48 h-48 rounded-3xl mx-auto mb-7"
-              style={{ background: hsl(guess) }}
-            />
-
-            <div className="border border-white/8 rounded-2xl p-5 space-y-6 bg-white/[0.02]">
-              <Slider
-                label="Matiz"
-                value={guess.h}
-                min={0} max={360}
-                onChange={v => setGuess(g => ({ ...g, h: v }))}
-                gradient="linear-gradient(to right,hsl(0,80%,50%),hsl(60,80%,50%),hsl(120,80%,50%),hsl(180,80%,50%),hsl(240,80%,50%),hsl(300,80%,50%),hsl(360,80%,50%))"
-              />
-              <Slider
-                label="Saturação"
-                value={guess.s}
-                min={0} max={100}
-                onChange={v => setGuess(g => ({ ...g, s: v }))}
-                gradient={`linear-gradient(to right,hsl(${guess.h},0%,${guess.l}%),hsl(${guess.h},100%,${guess.l}%))`}
-              />
-              <Slider
-                label="Luminosidade"
-                value={guess.l}
-                min={0} max={100}
-                onChange={v => setGuess(g => ({ ...g, l: v }))}
-                gradient={`linear-gradient(to right,hsl(${guess.h},${guess.s}%,0%),hsl(${guess.h},${guess.s}%,50%),hsl(${guess.h},${guess.s}%,100%))`}
-              />
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <p
+                className="text-[10px] sm:text-xs uppercase tracking-[0.25em] font-medium"
+                style={{ color: '#555' }}
+              >
+                Qual era a cor?
+              </p>
+              <span
+                className="font-mono text-[11px] sm:text-xs tabular-nums shrink-0"
+                style={{ color: choiceCountdown <= 2 ? '#555' : '#888' }}
+              >
+                {String(choiceCountdown).padStart(2, '0')}
+              </span>
             </div>
 
-            <button
-              onClick={handleConfirm}
-              className="w-full mt-6 py-4 bg-white text-black font-bold rounded-2xl hover:bg-white/90 active:scale-95 transition-all text-sm tracking-wide uppercase"
-            >
-              Confirmar
-            </button>
+            <div className="mb-4 sm:mb-5">
+              <ProgressBar value={choiceCountdown} max={CHOICE_COUNTDOWN} urgent={choiceCountdown <= 2} />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              {options.map((opt, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleOptionSelect(opt)}
+                  className="aspect-square rounded-md sm:rounded-lg hover:scale-[1.02] active:scale-[0.96] transition-transform duration-100"
+                  style={{ background: hsl(opt), border: '1px solid rgba(0,0,0,0.06)' }}
+                />
+              ))}
+            </div>
           </div>
         )}
 
-        {/* ── REVEAL ─────────────────────────────── */}
+        {/* ── REVEAL ──────────────────────────────── */}
         {phase === 'reveal' && (
-          <div className="flex flex-col items-center">
-            <p className="text-white/40 mb-6 text-sm uppercase tracking-wide font-medium">
+          <div>
+            <p
+              className="text-[10px] sm:text-xs uppercase tracking-[0.25em] font-medium mb-4 sm:mb-5"
+              style={{ color: '#555' }}
+            >
               Comparação
             </p>
 
-            <div className="flex gap-3 w-full mb-10">
-              <div className="flex-1">
-                <p className="text-[10px] text-white/25 mb-2 text-center uppercase tracking-widest font-medium">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-5">
+              <div>
+                <p
+                  className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] font-medium mb-2"
+                  style={{ color: '#777' }}
+                >
                   Alvo
                 </p>
                 <div
-                  className="h-36 rounded-2xl"
-                  style={{ background: hsl(target) }}
+                  className="w-full rounded-md sm:rounded-lg h-[100px] sm:h-[140px] lg:h-[160px]"
+                  style={{ background: hsl(target), border: '1px solid rgba(0,0,0,0.06)' }}
                 />
               </div>
-              <div className="flex-1">
-                <p className="text-[10px] text-white/25 mb-2 text-center uppercase tracking-widest font-medium">
+              <div>
+                <p
+                  className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] font-medium mb-2"
+                  style={{ color: '#777' }}
+                >
                   Palpite
                 </p>
                 <div
-                  className="h-36 rounded-2xl"
-                  style={{ background: hsl(guess) }}
+                  className="w-full rounded-md sm:rounded-lg h-[100px] sm:h-[140px] lg:h-[160px]"
+                  style={{ background: hsl(guess), border: '1px solid rgba(0,0,0,0.06)' }}
                 />
               </div>
             </div>
@@ -431,7 +509,8 @@ export default function App() {
 
             <button
               onClick={handleNext}
-              className="w-full mt-8 py-4 bg-white text-black font-bold rounded-2xl hover:bg-white/90 active:scale-95 transition-all text-sm tracking-wide uppercase"
+              className="w-full mt-4 sm:mt-5 py-3.5 sm:py-4 text-sm sm:text-base font-semibold rounded-lg active:scale-[0.98] transition-all"
+              style={{ background: '#0a0a0a', color: '#fff' }}
             >
               {round >= ROUNDS ? 'Ver resultados' : 'Próxima rodada'}
             </button>
@@ -439,7 +518,6 @@ export default function App() {
         )}
 
       </div>
-      
     </div>
   )
 }
