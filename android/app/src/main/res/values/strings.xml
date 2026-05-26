@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">iabadaba</string>
+    <string name="title_activity_main">iabadaba</string>
+    <string name="package_name">com.iabadaba.app</string>
+    <string name="custom_url_scheme">com.iabadaba.app</string>
+</resources>
