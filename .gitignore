@@ -1,0 +1,45 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+
+# Keystores e chaves — NUNCA commitar
+*.jks
+*.keystore
+*.p12
+*.pfx
+key.properties
+keystore.properties
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.production
+
+# Android — arquivos gerados localmente
+android/local.properties
+android/.gradle/
+android/app/build/
+android/build/
+android/captures/
+android/.idea/
+android/app/release/
+
+# Google Services (contém chaves de API)
+google-services.json
+GoogleService-Info.plist
+
+# IDEs
+.idea/
+.vscode/
+*.suo
+*.user
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
